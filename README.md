@@ -117,3 +117,5 @@ If you can't access Slack, you can also [subscribe to our mailing list](mailto:g
 Join our [fortnightly Zoom meeting](https://zoom.us/j/97235277537?pwd=aDJsaE8zcDJpYW1vZHJmSTJ0RXNZUT09) on Monday, 11AM EST (odd week numbers). Send an e-mail to [help@finos.org](mailto:help@finos.org) to get a calendar invitation.
 
 Otherwise, if you have a deeper query or require more support, please [raise an issue](https://github.com/finos/git-proxy/issues). 
+
+Testing changes - please delete this line
