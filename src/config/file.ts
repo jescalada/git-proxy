@@ -1,6 +1,16 @@
-const path = require('path');
-// eslint-disable-next-line prefer-const
-let configFile = undefined;
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { validate as jsonSchemaValidate } from 'jsonschema';
+
+export let configFile: string = join(process.cwd(), 'proxy.config.json');
+
+/**
+ * Set the config file path.
+ * @param {string} file - The path to the config file.
+ */
+export function setConfigFile(file: string) {
+  configFile = file;
+}
 
 /**
  * Validate config file.
@@ -8,25 +18,10 @@ let configFile = undefined;
  * @return {boolean} - Returns true if validation is successful.
  * @throws Will throw an error if the validation fails.
  */
-function validate(configFilePath = configFile) {
-  const fs = require('fs');
-  const path = require('path');
-  const validate = require('jsonschema').validate;
-
-  const config = JSON.parse(fs.readFileSync(configFilePath));
-  const schema = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', '..', 'config.schema.json')),
-  );
-  validate(config, schema, { required: true, throwError: true });
+export function validate(configFilePath: string = configFile!): boolean {
+  const config = JSON.parse(readFileSync(configFilePath, 'utf-8'));
+  const schemaPath = join(process.cwd(), 'config.schema.json');
+  const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+  jsonSchemaValidate(config, schema, { required: true, throwError: true });
   return true;
 }
-
-module.exports = {
-  get configFile() {
-    return configFile ? configFile : path.join(process.cwd(), 'proxy.config.json');
-  },
-  set configFile(file) {
-    configFile = file;
-  },
-  validate,
-};
