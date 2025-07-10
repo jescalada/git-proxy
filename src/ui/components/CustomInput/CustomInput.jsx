@@ -1,64 +1,102 @@
 import React from 'react';
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import makeStyles from '@mui/styles/makeStyles';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
+import { styled } from '@mui/material/styles';
 import Input from '@mui/material/Input';
-import Clear from '@mui/icons-material/Clear';
-import Check from '@mui/icons-material/Check';
-import styles from '../../assets/jss/material-dashboard-react/components/customInputStyle';
+import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
+import CheckIcon from '@mui/icons-material/Check';
+import ClearIcon from '@mui/icons-material/Clear';
 
-const useStyles = makeStyles(styles);
+const StyledFormControl = styled(FormControl)(({ theme }) => ({
+  paddingBottom: '10px',
+  margin: '27px 0 0',
+  position: 'relative',
+  verticalAlign: 'unset',
+}));
+
+const StyledLabel = styled(InputLabel)(({ theme, ownerState }) => ({
+  fontSize: '14px',
+  lineHeight: 1.42857,
+  fontWeight: 400,
+  color: ownerState.error
+    ? theme.palette.error.main
+    : ownerState.success
+    ? theme.palette.success.main
+    : theme.palette.text.secondary,
+}));
+
+const StyledInput = styled(Input)(({ theme, ownerState }) => ({
+  marginTop: ownerState.labelText ? 0 : '16px',
+  '&:before': {
+    borderColor: theme.palette.grey[400],
+  },
+  '&:after': {
+    borderColor: ownerState.error
+      ? theme.palette.error.main
+      : ownerState.success
+      ? theme.palette.success.main
+      : theme.palette.primary.main,
+  },
+  '&:hover:not(.Mui-disabled):before': {
+    borderColor: theme.palette.grey[400],
+  },
+}));
+
+const FeedbackIcon = styled('div')(({ theme, color }) => ({
+  position: 'absolute',
+  top: '18px',
+  right: '0',
+  zIndex: 2,
+  width: '24px',
+  height: '24px',
+  textAlign: 'center',
+  color,
+  pointerEvents: 'none',
+}));
 
 export default function CustomInput(props) {
-  const classes = useStyles();
-  const { formControlProps, labelText, id, labelProps, inputProps, error, success } = props;
+  const {
+    formControlProps = {},
+    labelText,
+    id,
+    labelProps = {},
+    inputProps = {},
+    error,
+    success,
+  } = props;
 
-  const labelClasses = classNames({
-    [' ' + classes.labelRootError]: error,
-    [' ' + classes.labelRootSuccess]: success && !error,
-  });
-  const underlineClasses = classNames({
-    [classes.underlineError]: error,
-    [classes.underlineSuccess]: success && !error,
-    [classes.underline]: true,
-  });
-  const marginTop = classNames({
-    [classes.marginTop]: labelText === undefined,
-  });
+  const ownerState = { error, success, labelText };
 
-  const generateIcon = () => {
-    if (error) {
-      return <Clear className={classes.feedback + ' ' + classes.labelRootError} />;
-    }
-    if (success) {
-      return <Check className={classes.feedback + ' ' + classes.labelRootSuccess} />;
-    }
-    return null;
-  };
+  const feedbackColor = error
+    ? 'error.main'
+    : success
+    ? 'success.main'
+    : 'transparent';
 
   return (
-    <FormControl
-      {...formControlProps}
-      className={formControlProps.className + ' ' + classes.formControl}
-    >
-      {labelText !== undefined ? (
-        <InputLabel className={classes.labelRoot + labelClasses} htmlFor={id} {...labelProps}>
+    <StyledFormControl {...formControlProps}>
+      {labelText && (
+        <StyledLabel htmlFor={id} {...labelProps} ownerState={ownerState}>
           {labelText}
-        </InputLabel>
-      ) : null}
-      <Input
-        classes={{
-          root: marginTop,
-          disabled: classes.disabled,
-          underline: underlineClasses,
-        }}
+        </StyledLabel>
+      )}
+      <StyledInput
         id={id}
+        ownerState={ownerState}
+        disableUnderline={false}
         {...inputProps}
       />
-      {generateIcon()}
-    </FormControl>
+      {error && (
+        <FeedbackIcon color="red">
+          <ClearIcon fontSize="small" />
+        </FeedbackIcon>
+      )}
+      {!error && success && (
+        <FeedbackIcon color="green">
+          <CheckIcon fontSize="small" />
+        </FeedbackIcon>
+      )}
+    </StyledFormControl>
   );
 }
 
