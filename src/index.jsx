@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { createBrowserHistory } from 'history';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from './ui/auth/AuthProvider';
@@ -13,7 +13,8 @@ import NotFound from './ui/views/Extras/NotFound';
 
 const hist = createBrowserHistory();
 
-ReactDOM.render(
+const root = createRoot(document.getElementById('root'));
+root.render(
   <AuthProvider>
     <Router history={hist}>
       <Routes>
@@ -25,5 +26,4 @@ ReactDOM.render(
       </Routes>
     </Router>
   </AuthProvider>,
-  document.getElementById('root'),
 );
