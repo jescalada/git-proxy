@@ -4,8 +4,8 @@ import Card from '../../components/Card/Card';
 import CardBody from '../../components/Card/CardBody';
 import GridContainer from '../../components/Grid/GridContainer';
 import GridItem from '../../components/Grid/GridItem';
-import { Button } from '@material-ui/core';
-import LockIcon from '@material-ui/icons/Lock';
+import { Button } from '@mui/material';
+import LockIcon from '@mui/icons-material/Lock';
 
 const NotAuthorized = () => {
   const navigate = useNavigate();

@@ -2,13 +2,13 @@ import React from 'react';
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
-import { makeStyles } from '@material-ui/core/styles';
-import Drawer from '@material-ui/core/Drawer';
-import Hidden from '@material-ui/core/Hidden';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
-import Icon from '@material-ui/core/Icon';
+import makeStyles from '@mui/styles/makeStyles';
+import Drawer from '@mui/material/Drawer';
+import Hidden from '@mui/material/Hidden';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Icon from '@mui/material/Icon';
 import styles from '../../assets/jss/material-dashboard-react/components/sidebarStyle';
 
 const useStyles = makeStyles(styles);
@@ -107,7 +107,7 @@ export default function Sidebar(props) {
           <div className={classes.background} style={{ backgroundColor: background }} />
         </Drawer>
       </Hidden>
-      <Hidden smDown implementation='css'>
+      <Hidden mdDown implementation='css'>
         <Drawer
           anchor={props.rtlActive ? 'right' : 'left'}
           variant='permanent'

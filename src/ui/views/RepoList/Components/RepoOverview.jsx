@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Snackbar, TableCell, TableRow } from '@material-ui/core';
+import { Snackbar, TableCell, TableRow } from '@mui/material';
 import GridContainer from '../../../components/Grid/GridContainer';
 import GridItem from '../../../components/Grid/GridItem';
 import { CodeReviewIcon, LawIcon, PeopleIcon } from '@primer/octicons-react';

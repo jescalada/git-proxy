@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { getUIRouteAuth } from '../../services/config';
-import CircularProgress from '@material-ui/core/CircularProgress';
+import CircularProgress from '@mui/material/CircularProgress';
 
 interface RouteGuardProps {
   component: React.ComponentType<any>;

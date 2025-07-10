@@ -1,5 +1,5 @@
 import * as Diff2Html from 'diff2html';
-import ReactHtmlParser from 'react-html-parser';
+import parse from 'html-react-parser';
 
 export default function Diff(props) {
   const { diff } = props;
@@ -8,5 +8,5 @@ export default function Diff(props) {
     matching: 'lines',
   });
 
-  return new ReactHtmlParser(outputHtml);
+  return <>{parse(outputHtml)}</>;
 }

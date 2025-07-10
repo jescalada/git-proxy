@@ -18,7 +18,7 @@
 
 import React from 'react';
 import RouteGuard from './ui/components/RouteGuard/RouteGuard';
-import Person from '@material-ui/icons/Person';
+import Person from '@mui/icons-material/Person';
 import OpenPushRequests from './ui/views/OpenPushRequests/OpenPushRequests';
 import PushDetails from './ui/views/PushDetails/PushDetails';
 import User from './ui/views/User/User';
@@ -28,7 +28,7 @@ import RepoList from './ui/views/RepoList/RepoList';
 
 import { RepoIcon } from '@primer/octicons-react';
 
-import { Group, AccountCircle, Dashboard } from '@material-ui/icons';
+import { Group, AccountCircle, Dashboard } from '@mui/icons-material';
 
 const dashboardRoutes = [
   {

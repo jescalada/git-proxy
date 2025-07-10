@@ -4,8 +4,8 @@ import Card from '../../components/Card/Card';
 import CardBody from '../../components/Card/CardBody';
 import GridContainer from '../../components/Grid/GridContainer';
 import GridItem from '../../components/Grid/GridItem';
-import { Button } from '@material-ui/core';
-import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
+import { Button } from '@mui/material';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 const NotFound = () => {
   const navigate = useNavigate();
