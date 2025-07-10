@@ -1,26 +1,62 @@
 import React from 'react';
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import makeStyles from '@mui/styles/makeStyles';
-import styles from '../../assets/jss/material-dashboard-react/components/cardFooterStyle';
+import clsx from 'clsx';
+import { styled } from '@mui/material/styles';
 
-const useStyles = makeStyles(styles);
+const BaseCardFooter = styled('div')(({ theme }) => ({
+  padding: 0,
+  paddingTop: '10px',
+  margin: '0 15px 10px',
+  borderRadius: 0,
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  display: 'flex',
+  backgroundColor: 'transparent',
+  border: 0,
+  '&.plain': {
+    paddingLeft: '5px',
+    paddingRight: '5px',
+    backgroundColor: 'transparent',
+  },
+  '&.profile': {
+    marginTop: '-15px',
+  },
+  '&.stats': {
+    borderTop: `1px solid ${theme.palette.divider}`,
+    marginTop: '20px',
+    '& svg': {
+      position: 'relative',
+      top: '4px',
+      margin: '0 3px',
+      width: '16px',
+      height: '16px',
+    },
+    '& .material-icons, & [class*="fa"]': {
+      fontSize: '16px',
+      position: 'relative',
+      top: '4px',
+      margin: '0 3px',
+    },
+  },
+  '&.chart': {
+    borderTop: `1px solid ${theme.palette.divider}`,
+  },
+}));
 
 export default function CardFooter(props) {
-  const classes = useStyles();
   const { className, children, plain, profile, stats, chart, ...rest } = props;
-  const cardFooterClasses = classNames({
-    [classes.cardFooter]: true,
-    [classes.cardFooterPlain]: plain,
-    [classes.cardFooterProfile]: profile,
-    [classes.cardFooterStats]: stats,
-    [classes.cardFooterChart]: chart,
-    [className]: className !== undefined,
+
+  const cardFooterClasses = clsx(className, {
+    plain,
+    profile,
+    stats,
+    chart,
   });
+
   return (
-    <div className={cardFooterClasses} {...rest}>
+    <BaseCardFooter className={cardFooterClasses} {...rest}>
       {children}
-    </div>
+    </BaseCardFooter>
   );
 }
 
