@@ -1,24 +1,31 @@
 import React from 'react';
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import makeStyles from '@mui/styles/makeStyles';
-import styles from '../../assets/jss/material-dashboard-react/components/cardBodyStyle';
+import clsx from 'clsx';
+import { styled } from '@mui/material/styles';
 
-const useStyles = makeStyles(styles);
-
+const BaseCardBody = styled('div')(({ theme }) => ({
+  padding: '0.9375rem 20px',
+  flex: '1 1 auto',
+  position: 'relative',
+  '&.plain': {
+    paddingLeft: '5px',
+    paddingRight: '5px',
+  },
+  '&.profile': {
+    marginTop: '15px',
+  },
+}));
 export default function CardBody(props) {
-  const classes = useStyles();
   const { className, children, plain, profile, ...rest } = props;
-  const cardBodyClasses = classNames({
-    [classes.cardBody]: true,
-    [classes.cardBodyPlain]: plain,
-    [classes.cardBodyProfile]: profile,
-    [className]: className !== undefined,
+  const cardBodyClasses = clsx(className, {
+    plain,
+    profile,
   });
+
   return (
-    <div className={cardBodyClasses} {...rest}>
+    <BaseCardBody className={cardBodyClasses} {...rest}>
       {children}
-    </div>
+    </BaseCardBody>
   );
 }
 
