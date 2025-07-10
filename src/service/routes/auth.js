@@ -117,7 +117,7 @@ router.get('/profile', async (req, res) => {
     delete userVal.password;
     res.send(userVal);
   } else {
-    res.status(401).end();
+    res.status(401).send({ message: 'Unauthorized' }).end();
   }
 });
 
