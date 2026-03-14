@@ -21,6 +21,39 @@ import * as db from '../../db';
 
 export const type = 'local';
 
+type DefaultLocalUser = {
+  username: string;
+  password: string;
+  email: string;
+  gitAccount: string;
+  admin: boolean;
+};
+
+const DEFAULT_LOCAL_USERS: DefaultLocalUser[] = [
+  {
+    username: 'admin',
+    password: 'admin',
+    email: 'admin@place.com',
+    gitAccount: 'none',
+    admin: true,
+  },
+  {
+    username: 'user',
+    password: 'user',
+    email: 'user@place.com',
+    gitAccount: 'none',
+    admin: false,
+  },
+];
+
+const isProduction = (): boolean => process.env.NODE_ENV === 'production';
+const isKnownDefaultCredentialAttempt = (username: string, password: string): boolean =>
+  DEFAULT_LOCAL_USERS.some(
+    (defaultUser) =>
+      defaultUser.username.toLowerCase() === username.toLowerCase() &&
+      defaultUser.password === password,
+  );
+
 // Dynamic import to always get the current db module instance
 // This is necessary for test environments where modules may be reset
 const getDb = () => import('../../db');
@@ -34,6 +67,13 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
         done: (err: unknown, user?: Partial<db.User>, info?: IVerifyOptions) => void,
       ) => {
         try {
+          if (isProduction() && isKnownDefaultCredentialAttempt(username, password)) {
+            return done(null, undefined, {
+              message:
+                'Default credentials are disabled in production. Please use a non-default account password.',
+            });
+          }
+
           const dbModule = await getDb();
           const user = await dbModule.findUser(username);
           if (!user) {
@@ -74,6 +114,11 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
  * Create the default admin and regular test users.
  */
 export const createDefaultAdmin = async () => {
+  if (isProduction()) {
+    console.warn('Skipping creation of default local users in production.');
+    return;
+  }
+
   const createIfNotExists = async (
     username: string,
     password: string,
@@ -87,6 +132,13 @@ export const createDefaultAdmin = async () => {
     }
   };
 
-  await createIfNotExists('admin', 'admin', 'admin@place.com', 'none', true);
-  await createIfNotExists('user', 'user', 'user@place.com', 'none', false);
+  for (const defaultUser of DEFAULT_LOCAL_USERS) {
+    await createIfNotExists(
+      defaultUser.username,
+      defaultUser.password,
+      defaultUser.email,
+      defaultUser.gitAccount,
+      defaultUser.admin,
+    );
+  }
 };
