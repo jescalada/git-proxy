@@ -16,24 +16,19 @@
 
 import React, { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import FormControl from '@material-ui/core/FormControl';
-import InputLabel from '@material-ui/core/InputLabel';
 import GridItem from '../../components/Grid/GridItem';
 import GridContainer from '../../components/Grid/GridContainer';
-import Input from '@material-ui/core/Input';
-import Button from '../../components/CustomButtons/Button';
 import Card from '../../components/Card/Card';
 import CardHeader from '../../components/Card/CardHeader';
-import CardBody from '../../components/Card/CardBody';
-import CardFooter from '../../components/Card/CardFooter';
 import axios, { AxiosError } from 'axios';
 import logo from '../../assets/img/git-proxy.png';
-import { Badge, CircularProgress, FormLabel, Snackbar } from '@material-ui/core';
+import { Badge, Snackbar } from '@material-ui/core';
 import { useAuth } from '../../auth/AuthProvider';
 import { getBaseUrl } from '../../services/apiConfig';
 import { getAxiosConfig, processAuthError } from '../../services/auth';
 import { BackendResponse } from '../../types';
 import { PublicUser } from '../../../db/types';
+import AuthFormSection from './components/AuthFormSection';
 
 interface LoginResponse {
   message: string;
@@ -220,146 +215,25 @@ const Login: React.FC = () => {
                 />
               </div>
             </CardHeader>
-            {requirePasswordChange ? (
-              <CardBody>
-                <GridContainer>
-                  <GridItem xs={12} sm={12} md={12}>
-                    <FormLabel component='legend' style={{ fontSize: '1.2rem', marginTop: 10 }}>
-                      Password change required
-                    </FormLabel>
-                    <FormLabel
-                      component='legend'
-                      style={{ fontSize: '0.95rem', marginTop: 10, opacity: 0.8 }}
-                    >
-                      This account is using an insecure default password. Update it now to continue.
-                    </FormLabel>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor='current-password'>Current password</InputLabel>
-                      <Input
-                        id='current-password'
-                        type='password'
-                        value={currentPasswordForChange}
-                        onChange={(e) => setCurrentPasswordForChange(e.target.value)}
-                        data-test='current-password'
-                      />
-                    </FormControl>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor='new-password'>New password</InputLabel>
-                      <Input
-                        id='new-password'
-                        type='password'
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        data-test='new-password'
-                      />
-                    </FormControl>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor='confirm-new-password'>Confirm new password</InputLabel>
-                      <Input
-                        id='confirm-new-password'
-                        type='password'
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        data-test='confirm-new-password'
-                      />
-                    </FormControl>
-                  </GridItem>
-                </GridContainer>
-              </CardBody>
-            ) : usernamePasswordMethod ? (
-              <CardBody>
-                <GridContainer>
-                  <GridItem xs={12} sm={12} md={12}>
-                    <FormLabel component='legend' style={{ fontSize: '1.2rem', marginTop: 10 }}>
-                      Login
-                    </FormLabel>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor='username'>Username</InputLabel>
-                      <Input
-                        id='username'
-                        type='text'
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        autoFocus
-                        data-test='username'
-                      />
-                    </FormControl>
-                  </GridItem>
-                </GridContainer>
-                <GridContainer>
-                  <GridItem xs={12} sm={12} md={12}>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor='password'>Password</InputLabel>
-                      <Input
-                        id='password'
-                        type='password'
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        data-test='password'
-                      />
-                    </FormControl>
-                  </GridItem>
-                </GridContainer>
-              </CardBody>
-            ) : (
-              <CardBody>
-                <FormLabel
-                  component='legend'
-                  style={{ fontSize: '1rem', marginTop: 10, marginBottom: 0 }}
-                >
-                  Username/password authentication is not enabled at this time.
-                </FormLabel>
-              </CardBody>
-            )}
-            {/* Show login buttons if available (one on top of the other) */}
-            <CardFooter style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {!isLoading ? (
-                <>
-                  {requirePasswordChange ? (
-                    <Button
-                      color='success'
-                      block
-                      disabled={!validatePasswordChangeForm()}
-                      type='submit'
-                      data-test='password-change'
-                    >
-                      Update password
-                    </Button>
-                  ) : (
-                    usernamePasswordMethod && (
-                      <Button
-                        color='success'
-                        block
-                        disabled={!validateForm()}
-                        type='submit'
-                        data-test='login'
-                      >
-                        Login
-                      </Button>
-                    )
-                  )}
-                  {!requirePasswordChange &&
-                    authMethods.map((am) => (
-                      <Button
-                        color='success'
-                        block
-                        onClick={() => handleAuthMethodLogin(am)}
-                        data-test={`${am}-login`}
-                        key={am}
-                      >
-                        Login
-                        {authMethods.length > 1 || usernamePasswordMethod
-                          ? ` with ${am.toUpperCase()}`
-                          : ''}
-                      </Button>
-                    ))}
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', width: '100%', opacity: 0.5, color: 'green' }}>
-                  <CircularProgress color='inherit' />
-                </div>
-              )}
-            </CardFooter>
+            <AuthFormSection
+              requirePasswordChange={requirePasswordChange}
+              isLoading={isLoading}
+              usernamePasswordMethod={usernamePasswordMethod}
+              authMethods={authMethods}
+              username={username}
+              password={password}
+              currentPasswordForChange={currentPasswordForChange}
+              newPassword={newPassword}
+              confirmNewPassword={confirmNewPassword}
+              canSubmitLogin={validateForm()}
+              canSubmitPasswordChange={validatePasswordChangeForm()}
+              onUsernameChange={setUsername}
+              onPasswordChange={setPassword}
+              onCurrentPasswordForChangeChange={setCurrentPasswordForChange}
+              onNewPasswordChange={setNewPassword}
+              onConfirmNewPasswordChange={setConfirmNewPassword}
+              onAuthMethodLogin={handleAuthMethodLogin}
+            />
           </Card>
           <div style={{ textAlign: 'center', opacity: 0.9, fontSize: 12, marginTop: 20 }}>
             <Badge
