@@ -18,16 +18,8 @@ import bcrypt from 'bcryptjs';
 import { IVerifyOptions, Strategy as LocalStrategy } from 'passport-local';
 import type { PassportStatic } from 'passport';
 import * as db from '../../db';
-
+import type { DefaultLocalUser } from './types';
 export const type = 'local';
-
-type DefaultLocalUser = {
-  username: string;
-  password: string;
-  email: string;
-  gitAccount: string;
-  admin: boolean;
-};
 
 const DEFAULT_LOCAL_USERS: DefaultLocalUser[] = [
   {
@@ -78,8 +70,7 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
             return done(null, undefined, { message: 'Incorrect password.' });
           }
 
-          // Guard production deployments against seeded credentials by forcing an immediate password
-          // update on first successful login with known defaults.
+          // Force password reset when using default accounts in production
           if (
             isProduction() &&
             isKnownDefaultCredentialAttempt(username, password) &&
@@ -134,13 +125,7 @@ export const createDefaultAdmin = async () => {
     }
   };
 
-  for (const defaultUser of DEFAULT_LOCAL_USERS) {
-    await createIfNotExists(
-      defaultUser.username,
-      defaultUser.password,
-      defaultUser.email,
-      defaultUser.gitAccount,
-      defaultUser.admin,
-    );
+  for (const u of DEFAULT_LOCAL_USERS) {
+    await createIfNotExists(u.username, u.password, u.email, u.gitAccount, u.admin);
   }
 };
