@@ -33,10 +33,11 @@ import { useAuth } from '../../auth/AuthProvider';
 import { getBaseUrl } from '../../services/apiConfig';
 import { getAxiosConfig, processAuthError } from '../../services/auth';
 import { BackendResponse } from '../../types';
+import { PublicUser } from '../../../db/types';
 
 interface LoginResponse {
-  username: string;
-  password: string;
+  message: string;
+  user: PublicUser;
 }
 
 const Login: React.FC = () => {
@@ -51,6 +52,10 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [authMethods, setAuthMethods] = useState<string[]>([]);
   const [usernamePasswordMethod, setUsernamePasswordMethod] = useState<string>('');
+  const [requirePasswordChange, setRequirePasswordChange] = useState<boolean>(false);
+  const [currentPasswordForChange, setCurrentPasswordForChange] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
 
   useEffect(() => {
     const fetchAuthConfig = async () => {
@@ -70,9 +75,25 @@ const Login: React.FC = () => {
     fetchAuthConfig();
   }, []);
 
+  useEffect(() => {
+    if (authContext.user?.mustChangePassword) {
+      setRequirePasswordChange(true);
+    }
+  }, [authContext.user]);
+
   function validateForm(): boolean {
     return (
       username.length > 0 && username.length < 100 && password.length > 0 && password.length < 200
+    );
+  }
+
+  function validatePasswordChangeForm(): boolean {
+    return (
+      currentPasswordForChange.length > 0 &&
+      newPassword.length >= 8 &&
+      confirmNewPassword.length >= 8 &&
+      newPassword === confirmNewPassword &&
+      newPassword !== currentPasswordForChange
     );
   }
 
@@ -88,7 +109,18 @@ const Login: React.FC = () => {
     try {
       const baseUrl = await getBaseUrl();
       const loginUrl = `${baseUrl}/api/auth/login`;
-      await axios.post<LoginResponse>(loginUrl, { username, password }, getAxiosConfig());
+      const response = await axios.post<LoginResponse>(
+        loginUrl,
+        { username, password },
+        getAxiosConfig(),
+      );
+      if (response.data?.user?.mustChangePassword) {
+        setRequirePasswordChange(true);
+        setCurrentPasswordForChange(password);
+        setMessage('For security, you must change your password before continuing.');
+        await authContext.refreshUser();
+        return;
+      }
       window.sessionStorage.setItem('git.proxy.login', 'success');
       setMessage('Success!');
       setSuccess(true);
@@ -112,6 +144,47 @@ const Login: React.FC = () => {
     }
   }
 
+  async function handlePasswordChangeSubmit(event: FormEvent): Promise<void> {
+    event.preventDefault();
+    setIsLoading(true);
+
+    if (!validatePasswordChangeForm()) {
+      setMessage(
+        'Please provide your current password and a new password (minimum 8 characters) that matches confirmation.',
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const baseUrl = await getBaseUrl();
+      await axios.post(
+        `${baseUrl}/api/auth/change-password`,
+        {
+          currentPassword: currentPasswordForChange,
+          newPassword,
+        },
+        getAxiosConfig(),
+      );
+      await authContext.refreshUser();
+      setRequirePasswordChange(false);
+      setSuccess(true);
+      setMessage('Password updated successfully.');
+      navigate('/dashboard/repo', { replace: true });
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        const backendMessage =
+          (error.response?.data as BackendResponse | undefined)?.message ??
+          'Unable to update password';
+        setMessage(backendMessage);
+      } else {
+        setMessage('Unable to update password');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   if (gitAccountError) {
     return <Navigate to='/dashboard/profile' />;
   }
@@ -120,8 +193,12 @@ const Login: React.FC = () => {
     return <Navigate to='/dashboard/repo' />;
   }
 
+  if (authContext.user && !authContext.user.mustChangePassword && !requirePasswordChange) {
+    return <Navigate to='/dashboard/repo' />;
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={requirePasswordChange ? handlePasswordChangeSubmit : handleSubmit}>
       <Snackbar
         open={!!message}
         message={message}
@@ -143,7 +220,53 @@ const Login: React.FC = () => {
                 />
               </div>
             </CardHeader>
-            {usernamePasswordMethod ? (
+            {requirePasswordChange ? (
+              <CardBody>
+                <GridContainer>
+                  <GridItem xs={12} sm={12} md={12}>
+                    <FormLabel component='legend' style={{ fontSize: '1.2rem', marginTop: 10 }}>
+                      Password change required
+                    </FormLabel>
+                    <FormLabel
+                      component='legend'
+                      style={{ fontSize: '0.95rem', marginTop: 10, opacity: 0.8 }}
+                    >
+                      This account is using an insecure default password. Update it now to continue.
+                    </FormLabel>
+                    <FormControl fullWidth>
+                      <InputLabel htmlFor='current-password'>Current password</InputLabel>
+                      <Input
+                        id='current-password'
+                        type='password'
+                        value={currentPasswordForChange}
+                        onChange={(e) => setCurrentPasswordForChange(e.target.value)}
+                        data-test='current-password'
+                      />
+                    </FormControl>
+                    <FormControl fullWidth>
+                      <InputLabel htmlFor='new-password'>New password</InputLabel>
+                      <Input
+                        id='new-password'
+                        type='password'
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        data-test='new-password'
+                      />
+                    </FormControl>
+                    <FormControl fullWidth>
+                      <InputLabel htmlFor='confirm-new-password'>Confirm new password</InputLabel>
+                      <Input
+                        id='confirm-new-password'
+                        type='password'
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        data-test='confirm-new-password'
+                      />
+                    </FormControl>
+                  </GridItem>
+                </GridContainer>
+              </CardBody>
+            ) : usernamePasswordMethod ? (
               <CardBody>
                 <GridContainer>
                   <GridItem xs={12} sm={12} md={12}>
@@ -192,31 +315,44 @@ const Login: React.FC = () => {
             <CardFooter style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {!isLoading ? (
                 <>
-                  {usernamePasswordMethod && (
+                  {requirePasswordChange ? (
                     <Button
                       color='success'
                       block
-                      disabled={!validateForm()}
+                      disabled={!validatePasswordChangeForm()}
                       type='submit'
-                      data-test='login'
+                      data-test='password-change'
                     >
-                      Login
+                      Update password
                     </Button>
+                  ) : (
+                    usernamePasswordMethod && (
+                      <Button
+                        color='success'
+                        block
+                        disabled={!validateForm()}
+                        type='submit'
+                        data-test='login'
+                      >
+                        Login
+                      </Button>
+                    )
                   )}
-                  {authMethods.map((am) => (
-                    <Button
-                      color='success'
-                      block
-                      onClick={() => handleAuthMethodLogin(am)}
-                      data-test={`${am}-login`}
-                      key={am}
-                    >
-                      Login
-                      {authMethods.length > 1 || usernamePasswordMethod
-                        ? ` with ${am.toUpperCase()}`
-                        : ''}
-                    </Button>
-                  ))}
+                  {!requirePasswordChange &&
+                    authMethods.map((am) => (
+                      <Button
+                        color='success'
+                        block
+                        onClick={() => handleAuthMethodLogin(am)}
+                        data-test={`${am}-login`}
+                        key={am}
+                      >
+                        Login
+                        {authMethods.length > 1 || usernamePasswordMethod
+                          ? ` with ${am.toUpperCase()}`
+                          : ''}
+                      </Button>
+                    ))}
                 </>
               ) : (
                 <div style={{ textAlign: 'center', width: '100%', opacity: 0.5, color: 'green' }}>

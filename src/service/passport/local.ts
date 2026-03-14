@@ -67,13 +67,6 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
         done: (err: unknown, user?: Partial<db.User>, info?: IVerifyOptions) => void,
       ) => {
         try {
-          if (isProduction() && isKnownDefaultCredentialAttempt(username, password)) {
-            return done(null, undefined, {
-              message:
-                'Default credentials are disabled in production. Please use a non-default account password.',
-            });
-          }
-
           const dbModule = await getDb();
           const user = await dbModule.findUser(username);
           if (!user) {
@@ -83,6 +76,20 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
           const passwordCorrect = await bcrypt.compare(password, user.password ?? '');
           if (!passwordCorrect) {
             return done(null, undefined, { message: 'Incorrect password.' });
+          }
+
+          // Guard production deployments against seeded credentials by forcing an immediate password
+          // update on first successful login with known defaults.
+          if (
+            isProduction() &&
+            isKnownDefaultCredentialAttempt(username, password) &&
+            !user.mustChangePassword
+          ) {
+            user.mustChangePassword = true;
+            await dbModule.updateUser({
+              username: user.username,
+              mustChangePassword: true,
+            });
           }
 
           return done(null, user);
@@ -114,11 +121,6 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
  * Create the default admin and regular test users.
  */
 export const createDefaultAdmin = async () => {
-  if (isProduction()) {
-    console.warn('Skipping creation of default local users in production.');
-    return;
-  }
-
   const createIfNotExists = async (
     username: string,
     password: string,
@@ -128,7 +130,7 @@ export const createDefaultAdmin = async () => {
   ) => {
     const user = await db.findUser(username);
     if (!user) {
-      await db.createUser(username, password, email, type, isAdmin);
+      await db.createUser(username, password, email, type, isAdmin, '', isProduction());
     }
   };
 

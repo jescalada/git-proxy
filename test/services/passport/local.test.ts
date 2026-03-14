@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('local auth defaults', () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -29,20 +29,38 @@ describe('local auth defaults', () => {
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it('does not create default local users in production', async () => {
+  it('creates default local users in production and marks them for password change', async () => {
     process.env.NODE_ENV = 'production';
 
     const dbStub = {
-      findUser: vi.fn(),
-      createUser: vi.fn(),
+      findUser: vi.fn().mockResolvedValue(null),
+      createUser: vi.fn().mockResolvedValue(undefined),
     };
     vi.doMock('../../../src/db', () => dbStub);
 
     const { createDefaultAdmin } = await import('../../../src/service/passport/local');
     await createDefaultAdmin();
 
-    expect(dbStub.findUser).not.toHaveBeenCalled();
-    expect(dbStub.createUser).not.toHaveBeenCalled();
+    expect(dbStub.findUser).toHaveBeenCalledWith('admin');
+    expect(dbStub.findUser).toHaveBeenCalledWith('user');
+    expect(dbStub.createUser).toHaveBeenCalledWith(
+      'admin',
+      'admin',
+      'admin@place.com',
+      'none',
+      true,
+      '',
+      true,
+    );
+    expect(dbStub.createUser).toHaveBeenCalledWith(
+      'user',
+      'user',
+      'user@place.com',
+      'none',
+      false,
+      '',
+      true,
+    );
   });
 
   it('creates default local users outside production when missing', async () => {
@@ -65,8 +83,18 @@ describe('local auth defaults', () => {
       'admin@place.com',
       'none',
       true,
+      '',
+      false,
     );
-    expect(dbStub.createUser).toHaveBeenCalledWith('user', 'user', 'user@place.com', 'none', false);
+    expect(dbStub.createUser).toHaveBeenCalledWith(
+      'user',
+      'user',
+      'user@place.com',
+      'none',
+      false,
+      '',
+      false,
+    );
   });
 });
 
@@ -91,12 +119,26 @@ describe('local auth login hardening', () => {
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it('rejects known default credentials in production before DB lookup', async () => {
+  it('marks default-credential logins for password change in production', async () => {
     process.env.NODE_ENV = 'production';
 
+    vi.doMock('bcryptjs', () => ({
+      default: {
+        compare: vi.fn().mockResolvedValue(true),
+      },
+    }));
+
     const dbStub = {
-      findUser: vi.fn(),
+      findUser: vi.fn().mockResolvedValue({
+        username: 'admin',
+        password: 'hashed-admin',
+        email: 'admin@place.com',
+        gitAccount: 'none',
+        admin: true,
+        mustChangePassword: false,
+      }),
       createUser: vi.fn(),
+      updateUser: vi.fn().mockResolvedValue(undefined),
     };
     const passportStub = {
       use: vi.fn(),
@@ -126,10 +168,14 @@ describe('local auth login hardening', () => {
     const done = vi.fn();
     await verifyCallback!('admin', 'admin', done);
 
-    expect(dbStub.findUser).not.toHaveBeenCalled();
+    expect(dbStub.findUser).toHaveBeenCalledWith('admin');
+    expect(dbStub.updateUser).toHaveBeenCalledWith({
+      username: 'admin',
+      mustChangePassword: true,
+    });
     expect(done).toHaveBeenCalledTimes(1);
     const [_err, user, info] = done.mock.calls[0];
-    expect(user).toBeUndefined();
-    expect((info as { message?: string })?.message).toContain('Default credentials are disabled');
+    expect(info).toBeUndefined();
+    expect((user as { mustChangePassword?: boolean }).mustChangePassword).toBe(true);
   });
 });

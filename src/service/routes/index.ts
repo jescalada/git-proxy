@@ -24,15 +24,25 @@ import healthcheck from './healthcheck';
 import config from './config';
 import { jwtAuthHandler } from '../passport/jwtAuthHandler';
 import { Proxy } from '../../proxy';
+import { mustChangePassword } from './utils';
 
 const routes = (proxy: Proxy) => {
   const router = express.Router();
+  const requireCompletedPasswordChange: express.RequestHandler = (req, res, next) => {
+    if (mustChangePassword(req.user)) {
+      return res.status(428).send({
+        message: 'Password change required before accessing this endpoint',
+      });
+    }
+    return next();
+  };
+
   router.use('/api', home);
   router.use('/api/auth', auth.router);
   router.use('/api/v1/healthcheck', healthcheck);
-  router.use('/api/v1/push', jwtAuthHandler(), push);
-  router.use('/api/v1/repo', jwtAuthHandler(), repo(proxy));
-  router.use('/api/v1/user', jwtAuthHandler(), users);
+  router.use('/api/v1/push', jwtAuthHandler(), requireCompletedPasswordChange, push);
+  router.use('/api/v1/repo', jwtAuthHandler(), requireCompletedPasswordChange, repo(proxy));
+  router.use('/api/v1/user', jwtAuthHandler(), requireCompletedPasswordChange, users);
   router.use('/api/v1/config', config);
   return router;
 };
