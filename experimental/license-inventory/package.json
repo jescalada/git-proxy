@@ -1,5 +1,5 @@
 {
-  "name": "@finos/git-proxy-license-inventory",
+  "name": "@jescalada/git-proxy-license-inventory",
   "version": "0.0.2",
   "author": "git-proxy contributors",
   "license": "Apache-2.0",
@@ -63,6 +63,6 @@
     "typescript-eslint": "^8.24.1"
   },
   "optionalDependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.56.1"
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0"
   }
 }

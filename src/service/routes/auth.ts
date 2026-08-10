@@ -17,7 +17,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { getPassport, authStrategies } from '../passport';
-import { getAuthMethods } from '../../config';
+import { getAuthMethods, getUIHost, getUIPort } from '../../config';
 
 import * as db from '../../db';
 import * as passportLocal from '../passport/local';
@@ -25,15 +25,38 @@ import * as passportAD from '../passport/activeDirectory';
 
 import { User } from '../../db/types';
 import { AuthenticationElement } from '../../config/generated/config';
-
 import { isAdminUser, mustChangePassword, toPublicUser } from './utils';
 import { handleErrorAndLog } from '../../utils/errors';
+import { scmTokenCache } from '../../proxy/processors/push-action/tokenIdentity';
 
 const router = express.Router();
 const passport = getPassport();
 
-const { GIT_PROXY_UI_HOST: uiHost = 'http://localhost', GIT_PROXY_UI_PORT: uiPort = 3000 } =
-  process.env;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_CHANGE_ALLOWED_PATHS = new Set([
+  '/',
+  '/config',
+  '/login',
+  '/logout',
+  '/profile',
+  '/change-password',
+  '/openidconnect',
+  '/openidconnect/callback',
+]);
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (!mustChangePassword(req.user)) {
+    return next();
+  }
+
+  if (PASSWORD_CHANGE_ALLOWED_PATHS.has(req.path)) {
+    return next();
+  }
+
+  return res.status(428).send({
+    message: 'Password change required before accessing this endpoint',
+  });
+});
 
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_CHANGE_ALLOWED_PATHS = new Set([
@@ -164,7 +187,7 @@ router.get('/openidconnect/callback', (req: Request, res: Response, next: NextFu
           return res.status(500).end();
         }
         console.log('Logged in successfully. User:', user);
-        return res.redirect(`${uiHost}:${uiPort}/dashboard/profile`);
+        return res.redirect(`${getUIHost()}:${getUIPort()}/dashboard/profile`);
       });
     },
   )(req, res, next);
@@ -333,16 +356,12 @@ router.post('/gitAccount', async (req: Request, res: Response) => {
     }
 
     user.gitAccount = req.body.gitAccount;
-    db.updateUser(user);
-    res.status(200).end();
+    await db.updateUser(user);
+    scmTokenCache.evictByUsername('github', user.username);
+    return res.status(200).send({ message: 'Git account updated successfully' }).end();
   } catch (error: unknown) {
     const msg = handleErrorAndLog(error, 'Failed to update git account');
-    res
-      .status(500)
-      .send({
-        message: msg,
-      })
-      .end();
+    return res.status(500).send({ message: msg }).end();
   }
 });
 
@@ -388,6 +407,11 @@ router.post('/create-user', async (req: Request, res: Response) => {
       })
       .end();
   }
+});
+
+router.get('/csrf-token', (req: Request, res: Response) => {
+  console.log('req.user', req.user);
+  res.send({ csrfToken: (req as any).csrfToken() });
 });
 
 export default { router, loginSuccessHandler };

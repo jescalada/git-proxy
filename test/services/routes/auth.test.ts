@@ -19,6 +19,14 @@ import request from 'supertest';
 import express, { Express, Request, Response } from 'express';
 import authRoutes from '../../../src/service/routes/auth';
 import * as db from '../../../src/db';
+import * as config from '../../../src/config';
+import bcryptjs from 'bcryptjs';
+
+vi.mock('../../../src/db', () => ({
+  findUser: vi.fn(),
+  updateUser: vi.fn(),
+  createUser: vi.fn(),
+}));
 
 const newApp = (username?: string, options?: { mustChangePassword?: boolean }): Express => {
   const app = express();
@@ -42,7 +50,7 @@ describe('Auth API', () => {
 
   describe('POST /gitAccount', () => {
     beforeEach(() => {
-      vi.spyOn(db, 'findUser').mockImplementation((username: string) => {
+      vi.mocked(db.findUser).mockImplementation((username: string) => {
         if (username === 'alice') {
           return Promise.resolve({
             username: 'alice',
@@ -66,10 +74,6 @@ describe('Auth API', () => {
         }
         return Promise.resolve(null);
       });
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     it('should return 401 Unauthorized if authenticated user not in request', async () => {
@@ -135,7 +139,7 @@ describe('Auth API', () => {
     });
 
     it('should return 200 OK if user is an admin and updates git account for authenticated user', async () => {
-      const updateUserSpy = vi.spyOn(db, 'updateUser').mockResolvedValue();
+      const updateUserSpy = vi.mocked(db.updateUser).mockResolvedValue();
 
       const res = await request(newApp('alice')).post('/auth/gitAccount').send({
         username: 'alice',
@@ -156,7 +160,7 @@ describe('Auth API', () => {
     });
 
     it("should prevent non-admin users from changing a different user's gitAccount", async () => {
-      const updateUserSpy = vi.spyOn(db, 'updateUser').mockResolvedValue();
+      const updateUserSpy = vi.mocked(db.updateUser).mockResolvedValue();
 
       const res = await request(newApp('bob')).post('/auth/gitAccount').send({
         username: 'phil',
@@ -168,7 +172,7 @@ describe('Auth API', () => {
     });
 
     it("should allow admin users to change a different user's gitAccount", async () => {
-      const updateUserSpy = vi.spyOn(db, 'updateUser').mockResolvedValue();
+      const updateUserSpy = vi.mocked(db.updateUser).mockResolvedValue();
 
       const res = await request(newApp('alice')).post('/auth/gitAccount').send({
         username: 'bob',
@@ -189,7 +193,7 @@ describe('Auth API', () => {
     });
 
     it('should allow non-admin users to update their own gitAccount', async () => {
-      const updateUserSpy = vi.spyOn(db, 'updateUser').mockResolvedValue();
+      const updateUserSpy = vi.mocked(db.updateUser).mockResolvedValue();
 
       const res = await request(newApp('bob')).post('/auth/gitAccount').send({
         username: 'bob',
@@ -221,6 +225,34 @@ describe('Auth API', () => {
       expect(res.body).toEqual({
         message: 'Password change required before accessing this endpoint',
       });
+    });
+
+    it('should skip password change requirement if path is in PASSWORD_CHANGE_ALLOWED_PATHS', async () => {
+      const res = await request(newApp('alice', { mustChangePassword: true })).get('/auth/config');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        usernamePasswordMethod: 'local',
+        otherMethods: [],
+      });
+    });
+
+    it('should return 500 if an error occurs', async () => {
+      vi.spyOn(db, 'updateUser').mockRejectedValue(new Error('Error'));
+      vi.spyOn(db, 'findUser').mockResolvedValue({
+        username: 'alice',
+        password: await bcryptjs.hash('secret-password', 10),
+        email: 'alice@example.com',
+        displayName: 'Alice Munro',
+        gitAccount: 'ORIGINAL_GIT_ACCOUNT',
+        admin: true,
+        title: '',
+      } as any);
+      const res = await request(newApp('alice')).post('/auth/gitAccount').send({
+        username: 'alice',
+        gitAccount: 'UPDATED_GIT_ACCOUNT',
+      });
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ message: 'Failed to update git account: Error' });
     });
   });
 
@@ -308,6 +340,49 @@ describe('Auth API', () => {
         mustChangePassword: false,
       });
     });
+
+    it('should return 400 if current password is the same as the new password', async () => {
+      const res = await request(newApp('alice')).post('/auth/change-password').send({
+        currentPassword: 'secret-password',
+        newPassword: 'secret-password',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ message: 'newPassword must be different from currentPassword' });
+    });
+
+    it('should return 400 if current password is missing (i.e: OIDC login)', async () => {
+      const res = await request(newApp('alice')).post('/auth/change-password').send({
+        currentPassword: undefined,
+        newPassword: 'new-password-123',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({
+        message:
+          'currentPassword and newPassword are required, and newPassword must be at least 8 characters',
+      });
+    });
+
+    it('should return 500 if an error occurs', async () => {
+      vi.spyOn(db, 'updateUser').mockRejectedValue(new Error('Error'));
+      vi.spyOn(db, 'findUser').mockResolvedValue({
+        username: 'alice',
+        password: await bcryptjs.hash('secret-password', 10),
+        email: 'alice@example.com',
+        displayName: 'Alice Munro',
+        gitAccount: 'ORIGINAL_GIT_ACCOUNT',
+        admin: true,
+        title: '',
+      } as any);
+      const res = await request(newApp('alice')).post('/auth/change-password').send({
+        currentPassword: 'secret-password',
+        newPassword: 'new-password-123',
+      });
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ message: 'Failed to update password: Error' });
+    });
   });
 
   describe('loginSuccessHandler', () => {
@@ -378,6 +453,8 @@ describe('Auth API', () => {
     });
 
     it('should return 404 Not Found if user is not found', async () => {
+      vi.spyOn(db, 'findUser').mockResolvedValue(null);
+
       const res = await request(newApp('non-existent-user')).get('/auth/profile');
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ message: 'User not found' });
@@ -413,6 +490,20 @@ describe('Auth API', () => {
         usernamePasswordMethod: 'local',
         otherMethods: [],
       });
+    });
+
+    it('should return null usernamePasswordMethod if no username/password auth method is enabled', async () => {
+      // Mock the getAuthMethods function to return an empty array
+      vi.spyOn(config, 'getAuthMethods').mockReturnValue([]);
+
+      const res = await request(newApp()).get('/auth/config');
+      expect(res.status).toBe(200);
+      expect(res.body.usernamePasswordMethod).toBeNull();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.resetModules();
     });
   });
 });
