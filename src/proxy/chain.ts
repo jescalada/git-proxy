@@ -132,6 +132,14 @@ const getProgressMessage = (fn: ProcessorExec): string => {
   }
   return 'Running plugin';
 };
+export const isClientDisconnected = (req: Request): boolean => {
+  const sshReq = req as Request & { isSSH?: boolean; sshClient?: { disconnected?: boolean } };
+  if (sshReq?.isSSH) {
+    return sshReq.sshClient?.disconnected === true;
+  }
+  return req?.socket?.destroyed === true;
+};
+
 
 export const executeChain = async (req: Request, res: Response): Promise<Action> => {
   let action: Action = {} as Action;
@@ -344,4 +352,5 @@ export default {
   },
   executeChain,
   getChain,
+  isClientDisconnected,
 };

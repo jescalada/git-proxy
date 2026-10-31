@@ -24,6 +24,7 @@ import { type Request } from 'express';
 
 import { PushActionPlugin, PushPhase,type PushPluginOptions } from '@finos/git-proxy/plugin'
 import { Step, type Action } from '@finos/git-proxy/proxy/actions';
+import { isClientDisconnected } from '@finos/git-proxy/proxy/chain';
 import { acknowledgeScan, submitScan, type DlpScan, type Verdict } from './mockDlpService';
 
 const TIMEOUT_MS = 5 * 60 * 1000;
@@ -112,7 +113,7 @@ async function waitForResult(
       }),
       new Promise((resolve) => {
         disconnectPoll = setInterval(() => {
-          if (isClientDisonnected(req)) {
+          if (isClientDisconnected(req)) {
             resolve({ status: 'disconnected' });
           }
         }, DISCONNECT_POLL_MS);
@@ -123,9 +124,6 @@ async function waitForResult(
     clearInterval(disconnectPoll);
   }
 }
-
-const isClientDisonnected = (req: ProxiedRequest): boolean =>
-  req.socket?.destroyed === true || (req.isSSH && req.sshClient?.disconnected === true);
 
 const trace = (message: string) =>
   console.log(`[ExternalServiceIntegration] ${new Date().toISOString()} ${message}`);
