@@ -31,6 +31,26 @@ In this example, we're using a mock Data Loss Prevention (DLP) service.
 
 Note that `ExternalServiceIntegration` runs in the `AFTER_DIFF` phase of the branch push chain.
 
+### Try it out 
+
+1. Run `npm run build` in this directory and install the package next to GitProxy (see the [plugin documentation](https://git-proxy.finos.org/docs/development/plugins)).
+2. Add the plugin to `proxy.config.json`:
+
+```json
+{
+   "plugins": ["@finos/git-proxy-plugin-samples/externalServiceIntegration"]
+}
+```
+
+3. Optionally, create an executable `hooks/pre-receive.sh` file relative to the directory where GitProxy is started. Make the hook exit with `0` so that pushes skip the manual approval phase. Combined with the `ExternalServiceIntegration` sample, pushes approved by the DLP are automatically approved, rejected ones are automatically rejected.
+
+```bash
+mkdir -p hooks
+printf '#!/bin/sh\nexit 0\n' > hooks/pre-receive.sh
+chmod +x hooks/pre-receive.sh
+```
+
+4. Start GitProxy and make a push. See the `[MockDLP]` and `[ExternalServiceIntegration]` output in the server logs. Mock scans log their result and delay ahead of time so GitProxy behaviour is easier to understand.
 
 ## Contributing
 
