@@ -14,32 +14,41 @@
  * limitations under the License.
  */
 
+/**
+ * Builds git-proxy-plugin-samples into JS.
+ */
+
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
-const sourcePath = join(packageRoot, 'customSecretScanner.ts');
 const outDir = join(packageRoot, 'dist');
-const source = readFileSync(sourcePath, 'utf8');
-const result = ts.transpileModule(source, {
-  fileName: sourcePath,
-  compilerOptions: {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    verbatimModuleSyntax: true,
-  },
-});
-
-if (result.diagnostics?.length) {
-  const message = ts.formatDiagnostics(result.diagnostics, {
-    getCanonicalFileName: (fileName) => fileName,
-    getCurrentDirectory: () => packageRoot,
-    getNewLine: () => '\n',
-  });
-  throw new Error(message);
-}
+const entries = ['customSecretScanner', 'externalServiceIntegration', 'mockDlpService'];
 
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, 'customSecretScanner.js'), result.outputText);
+
+for (const entry of entries) {
+  const sourcePath = join(packageRoot, `${entry}.ts`);
+  const source = readFileSync(sourcePath, 'utf8');
+  const result = ts.transpileModule(source, {
+    fileName: sourcePath,
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+      verbatimModuleSyntax: true,
+    },
+  });
+
+  if (result.diagnostics?.length) {
+    const message = ts.formatDiagnostics(result.diagnostics, {
+      getCanonicalFileName: (fileName) => fileName,
+      getCurrentDirectory: () => packageRoot,
+      getNewLine: () => '\n',
+    });
+    throw new Error(message);
+  }
+
+  writeFileSync(join(outDir, `${entry}.js`), result.outputText);
+}
