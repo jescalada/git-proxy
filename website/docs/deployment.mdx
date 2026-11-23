@@ -126,6 +126,8 @@ remote: http://localhost:8080/dashboard/push/3f9c2a7e1b8d4c6f0a5e9b2d7c1f4a8e6b3
    - Username: `admin`
    - Password: `admin`
 
+   When running with `NODE_ENV=production` (as in the [Docker image](#using-the-published-image)), the `admin` password is randomly generated and printed to the server log on first startup instead.
+
    See the [Authentication](/docs/architecture/architecture.md#authentication) section of the architecture guide for more details.
 3. Review the push and approve it
 4. Push again to forward to upstream:
@@ -149,6 +151,21 @@ docker run -d \
   -v $(pwd)/proxy.config.json:/app/proxy.config.json:ro \
   finos/git-proxy:latest
 ```
+
+:::warning Initial admin password
+The Docker image runs with `NODE_ENV=production`. In production, the default local accounts (`admin` and `user`) are **not** created with the well-known development passwords. Instead, a random password is generated for each account and printed **once** to the server log when the account is first created:
+
+```bash
+docker logs git-proxy 2>&1 | grep "Generated initial password"
+```
+
+```
+Generated initial password for default user 'admin': <random-password>
+Generated initial password for default user 'user': <random-password>
+```
+
+You will be asked to change the password on first login. The generated passwords are not shown again on later restarts, so retrieve them right after the first start. If you are using the file-based database, mount a persistent volume for `/app/.data` (see [Persistent Data](#persistent-data)); otherwise, new accounts and passwords are generated each time the container is recreated.
+:::
 
 ### Building from Source
 
@@ -176,7 +193,7 @@ The following environment variables can be set at container runtime:
 | `GIT_PROXY_HTTPS_UI_PORT`| `8444`       | UI/API server port (HTTPS, active when `tls.enabled`)    |
 | `ALLOWED_ORIGINS`        | (empty)      | CORS allowed origins (comma-separated, or `*` for all)   |
 | `API_URL`                | (empty)      | API URL for the UI (leave empty for same-origin)         |
-| `NODE_ENV`               | `production` | Node environment                                         |
+| `NODE_ENV`               | `production` | Node environment. In `production`, default local accounts get random initial passwords (see [Initial admin password](#using-the-published-image)) |
 
 Example with environment variables:
 ```bash

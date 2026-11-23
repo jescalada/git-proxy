@@ -164,6 +164,10 @@ Username: admin
 Password: admin
 ```
 
+:::note
+If GitProxy is running with `NODE_ENV=production` (for example, the Docker image), the `admin` password is randomly generated on first startup. Look for `Generated initial password for default user 'admin'` in the server logs.
+:::
+
 Once submitted, you should be logged in as administrator 💪
 
 #### 2. Visit the shareable link

@@ -132,6 +132,8 @@ Default accounts are provided for testing:
 - Admin: Username: `admin`, Password: `admin`
 - User: Username: `user`, Password: `user`
 
+When `NODE_ENV=production` (the default in the Docker image), these accounts are instead created with random passwords, printed once to the server log (`Generated initial password for default user '<username>': ...`), and must be changed on first login. See [Initial admin password](/docs/deployment#using-the-published-image).
+
 #### ActiveDirectory
 
 Allows AD authentication and user management. The following parameters must be configured in `proxy.config.json`, and `enabled` must be set to `true`:
