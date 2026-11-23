@@ -20,6 +20,8 @@ FROM node:24@sha256:5a593d74b632d1c6f816457477b6819760e13624455d587eef0fa418c8d0
 
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 # Install deps and create data dirs once
 RUN apt-get update && apt-get install -y --no-install-recommends git tini \
     && rm -rf /var/lib/apt/lists/* \
