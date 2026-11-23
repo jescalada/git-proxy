@@ -15,6 +15,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { IVerifyOptions, Strategy as LocalStrategy } from 'passport-local';
 import type { PassportStatic } from 'passport';
 import * as db from '../../db';
@@ -108,6 +109,9 @@ export const configure = async (passport: PassportStatic): Promise<PassportStati
 
 /**
  * Create the default admin and regular test users.
+ *
+ * In production, publicly known default passwords are replaced with random ones
+ * printed out once in the server log
  */
 export const createDefaultAdmin = async () => {
   const createIfNotExists = async (
@@ -118,6 +122,10 @@ export const createDefaultAdmin = async () => {
   ) => {
     const user = await db.findUser(username);
     if (!user) {
+      if (isProduction()) {
+        password = randomBytes(18).toString('base64url');
+        console.log(`Generated initial password for default user '${username}': ${password}`);
+      }
       await db.createUser(username, password, email, isAdmin, '', isProduction());
     }
   };

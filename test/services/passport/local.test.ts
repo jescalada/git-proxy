@@ -29,8 +29,9 @@ describe('local auth defaults', () => {
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it('creates default local users in production and marks them for password change', async () => {
+  it('creates default local users in production with random passwords and marks them for password change', async () => {
     process.env.NODE_ENV = 'production';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     const dbStub = {
       findUser: vi.fn().mockResolvedValue(null),
@@ -45,7 +46,7 @@ describe('local auth defaults', () => {
     expect(dbStub.findUser).toHaveBeenCalledWith('user');
     expect(dbStub.createUser).toHaveBeenCalledWith(
       'admin',
-      'admin',
+      expect.any(String),
       'admin@place.com',
       true,
       '',
@@ -53,12 +54,38 @@ describe('local auth defaults', () => {
     );
     expect(dbStub.createUser).toHaveBeenCalledWith(
       'user',
-      'user',
+      expect.any(String),
       'user@place.com',
       false,
       '',
       true,
     );
+
+    const [adminPassword, userPassword] = dbStub.createUser.mock.calls.map(
+      ([, password]) => password,
+    );
+    expect(adminPassword).not.toBe('admin');
+    expect(userPassword).not.toBe('user');
+    expect(adminPassword).not.toBe(userPassword);
+    expect(adminPassword.length).toBeGreaterThanOrEqual(16);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(adminPassword));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(userPassword));
+    logSpy.mockRestore();
+  });
+
+  it('does not recreate default users that already exist in production', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const dbStub = {
+      findUser: vi.fn().mockResolvedValue({ username: 'existing' }),
+      createUser: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.doMock('../../../src/db', () => dbStub);
+
+    const { createDefaultAdmin } = await import('../../../src/service/passport/local');
+    await createDefaultAdmin();
+
+    expect(dbStub.createUser).not.toHaveBeenCalled();
   });
 
   it('creates default local users outside production when missing', async () => {
